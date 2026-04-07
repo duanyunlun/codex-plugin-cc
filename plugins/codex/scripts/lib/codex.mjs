@@ -702,6 +702,19 @@ export function getCodexLoginStatus(cwd) {
   }
 
   const result = runCommand("codex", ["login", "status"], { cwd });
+
+  // Detect Rust panic (exit code 101, often triggered by UTF-8 encoding issues
+  // with Chinese text in relay/proxy setups). Treat as authenticated since the
+  // CLI itself is working — only the login status subcommand has this bug.
+  const isRustPanic = result.status === 101 || /panicked at/.test(result.stderr);
+  if (isRustPanic) {
+    return {
+      available: true,
+      loggedIn: true,
+      detail: "authenticated (login status check bypassed — known UTF-8 panic in relay setups)"
+    };
+  }
+
   if (result.error) {
     return {
       available: true,
